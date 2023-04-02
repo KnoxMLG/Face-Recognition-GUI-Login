@@ -14,7 +14,7 @@ import numpy as np
 import os
 ####################################################################### MYSQL login
 
-config_data = yaml.load(open("C:/Users/sahil/Documents/repos/mysqltest/config.yml"), Loader=yaml.FullLoader)
+config_data = yaml.load(open(r"C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\config.yml"), Loader=yaml.FullLoader)
 try:
     conn = connect(host=config_data["host"],
         user=config_data["user"],
@@ -51,10 +51,10 @@ class face_recog(QThread):
         else:
             video_mode = sys.argv[1] 
 
-        cascasdepath = r'C:/Users/sahil/Documents/repos/mysqltest/haarcascade_frontalface_default.xml'
+        cascasdepath = r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\haarcascade_frontalface_default.xml'
         face_cascade = cv2.CascadeClassifier(cascasdepath)
         video_capture = cv2.VideoCapture(video_mode)
-        path = r'C:/Users/sahil/Documents/repos/mysqltest/'
+        path = r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\face'
         while self._run_flag:
             ret, image = video_capture.read()
             if ret:
@@ -70,7 +70,7 @@ class face_recog(QThread):
                     face = image[y:y+h, x:x+w] #slice the face from the image
                     cv2.rectangle(image, (x,y), (x+h, y+h), (0, 255, 0), 2)
                     if count <2:
-                            cv2.imwrite(os.path.join(path, str(count)+'.jpg'), face)
+                        cv2.imwrite(os.path.join(path, str(count)+'.jpg'), face)
                     
                 
                 self.change_pixmap_signal.emit(image)
@@ -162,6 +162,7 @@ class accountCreation(QWidget): #to create account, probably going to use a lot 
     def show_new_window(self):
         self.hide()
         self.Login.show()
+
 ######################################################################
 
 ###################################################################### PyQt6 window to hold cv2 face recog
@@ -174,6 +175,13 @@ class face_recog_holder(QWidget):
 
         self.image_label=QLabel(self)
         self.image_label.resize(self.display_width, self.display_height)
+
+        self.Username = QLabel(self) #setup label
+        self.Username.setText("Username: ")
+        self.UserEntry = QtWidgets.QLineEdit(self)
+        self.Username.move(80, 20) 
+        self.Username.resize(200, 32)
+        self.UserEntry.move(150, 20)
 
         self.allGood = QLabel(self)
         self.allGood.setText("Face found, you can exit")
@@ -198,11 +206,24 @@ class face_recog_holder(QWidget):
 
     def show_accountCreation(self):
         self.hide()
+        cursor.execute("SELECT MAX(id) FROM images")
+        max_id=cursor.fetchone()[0]
+        add_row = ("INSERT INTO images "
+           "(id, username, face) "
+           "VALUES (%s, %s, %s)")
+        if max_id is None:
+            new_id = 1
+        else:
+            new_id = max_id + 1
+        new_username = self.UserEntry.text()
+        new_face = open(r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\face\0.jpg', 'rb').read() #rb is read binary
+        cursor.execute(add_row, (new_id, new_username, new_face))
+        conn.commit()
         if self.w is None:
             self.w = accountCreation()
             self.w.show()
             self.thread.stop() #so i dont get fucked wih errors
-            cursor._batch_insert
+            #cursor._batch_insert
         else:
             self.w.close()  # Close window.
             self.w = None  # Discard reference
