@@ -12,6 +12,8 @@ import yaml
 import cv2
 import numpy as np
 import os
+import pyodbc
+
 ####################################################################### MYSQL login
 
 config_data = yaml.load(open(r"C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\config.yml"), Loader=yaml.FullLoader)
@@ -98,14 +100,6 @@ class Login(QtWidgets.QWidget): #Generic account login
         self.Username.resize(200, 32)
         self.UserEntry.move(150, 20)
 
-        self.Pass = QLabel(self)
-        self.Pass.setText("Password: ")
-        self.PassEntry = QtWidgets.QLineEdit(self)
-        self.PassEntry.setEchoMode(QLineEdit.EchoMode.Password)
-        self.Pass.move(80, 20)
-        self.Pass.resize(200, 60)
-        self.PassEntry.move(150, 40)
-
         login = QPushButton('Login', self)
         login.clicked.connect(self.Login)
         login.resize(210,70)
@@ -129,7 +123,20 @@ class Login(QtWidgets.QWidget): #Generic account login
   
     #login function     
     def Login(self):
-        print("Swag2")
+        Username= self.UserEntry.text()
+        cursor.execute('SELECT username FROM images')
+        usernames = [row[0] for row in cursor.fetchall()]
+        # Compare the string to each username in the list
+        founduser=False
+        for username in usernames:
+            if Username == username:
+                founduser=True
+                break
+
+        if founduser==True:
+            self.hide()
+            self.Login.show()
+
 ######################################################################
         
 ###################################################################### New window to create an account
@@ -205,28 +212,39 @@ class face_recog_holder(QWidget):
         
 
     def show_accountCreation(self):
-        self.hide()
-        cursor.execute("SELECT MAX(id) FROM images")
-        max_id=cursor.fetchone()[0]
-        add_row = ("INSERT INTO images "
-           "(id, username, face) "
-           "VALUES (%s, %s, %s)")
-        if max_id is None:
-            new_id = 1
-        else:
-            new_id = max_id + 1
         new_username = self.UserEntry.text()
-        new_face = open(r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\face\0.jpg', 'rb').read() #rb is read binary
-        cursor.execute(add_row, (new_id, new_username, new_face))
-        conn.commit()
-        if self.w is None:
-            self.w = accountCreation()
-            self.w.show()
-            self.thread.stop() #so i dont get fucked wih errors
-            #cursor._batch_insert
-        else:
-            self.w.close()  # Close window.
-            self.w = None  # Discard reference
+        cursor.execute('SELECT username FROM images')
+        usernames = [row[0] for row in cursor.fetchall()]
+        # Compare the string to each username in the list
+        useralrexists=False
+        for username in usernames:
+            if new_username == username:
+                self.allGood.setText("Username Already Exists")
+                useralrexists=True
+                break
+        if useralrexists==False:
+            self.hide()
+            cursor.execute("SELECT MAX(id) FROM images")
+            max_id=cursor.fetchone()[0]
+            add_row = ("INSERT INTO images "
+            "(id, username, face) "
+            "VALUES (%s, %s, %s)")
+            if max_id is None:
+                new_id = 1
+            else:
+                new_id = max_id + 1
+            
+            new_face = open(r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\face\0.jpg', 'rb').read() #rb is read binary
+            cursor.execute(add_row, (new_id, new_username, new_face))
+            conn.commit()
+            if self.w is None:
+                self.w = accountCreation()
+                self.w.show()
+                self.thread.stop() #so i dont get fucked wih errors
+                #cursor._batch_insert
+            else:
+                self.w.close()  # Close window.
+                self.w = None  # Discard reference
 
     def closeEvent(self, event): #so face recog actually closes on program end 
         self.thread.stop()
