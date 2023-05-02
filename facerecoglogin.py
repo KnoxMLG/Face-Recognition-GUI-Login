@@ -1,22 +1,16 @@
-from getpass import getpass
-from itertools import count
-from venv import create
 from mysql.connector import connect, Error
-import sys
-from PyQt6 import QtCore, QtWidgets, QtGui
-from PyQt6.QtWidgets import QMainWindow, QWidget, QLabel, QLineEdit, QVBoxLayout, QApplication
+
+from PyQt6 import QtWidgets, QtGui
+from PyQt6.QtWidgets import  QWidget, QLabel, QVBoxLayout
 from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QPixmap
-import yaml
-import cv2
-import numpy as np
-import os
-import pyodbc
+import yaml, sys, cv2, numpy as np, pathlib, os
 
+filepath=pathlib.Path(__file__).parent.resolve() #path of file accesed
 ####################################################################### MYSQL login
 
-config_data = yaml.load(open(r"C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\config.yml"), Loader=yaml.FullLoader)
+config_data = yaml.load(open(str(filepath)+r'\config.yml'), Loader=yaml.FullLoader)
 try:
     conn = connect(host=config_data["host"],
         user=config_data["user"],
@@ -41,10 +35,10 @@ except Error as e:
 class face_recog(QThread):
     
     change_pixmap_signal = pyqtSignal(np.ndarray)
-
-    def __init__(self):
+    def __init__(self, calledfrom):
         super().__init__()
         self._run_flag = True
+        self.calledfrom = calledfrom
     
     def run(self): 
 
@@ -53,10 +47,10 @@ class face_recog(QThread):
         else:
             video_mode = sys.argv[1] 
 
-        cascasdepath = r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\haarcascade_frontalface_default.xml'
+        cascasdepath = str(filepath)+r'\haarcascade_frontalface_default.xml'
         face_cascade = cv2.CascadeClassifier(cascasdepath)
         video_capture = cv2.VideoCapture(video_mode)
-        path = r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\face'
+        path = str(filepath)+r'\face'
         while self._run_flag:
             ret, image = video_capture.read()
             if ret:
@@ -64,17 +58,18 @@ class face_recog(QThread):
                 image,
                 scaleFactor = 1.2,
                 minNeighbors = 5,
-                minSize = (30,30)
+                minSize = (200,200)
                 )
                 count = 0
-                
                 for (x,y,w,h) in faces:
                     face = image[y:y+h, x:x+w] #slice the face from the image
                     cv2.rectangle(image, (x,y), (x+h, y+h), (0, 255, 0), 2)
                     if count <2:
-                        cv2.imwrite(os.path.join(path, str(count)+'.jpg'), face)
-                    
-                
+                        if (self.calledfrom=='accountcreate'): #functionality changes based on which method facerecog is called from
+                            cv2.imwrite(os.path.join(path, str(count)+'.jpg'), face)
+                        if (self.calledfrom=='compare'):
+                            print(filepath)
+
                 self.change_pixmap_signal.emit(image)
         
 
@@ -87,7 +82,7 @@ class face_recog(QThread):
 ######################################################################        
 
 ###################################################################### Main login 
-class Login(QtWidgets.QWidget): #Generic account login
+class Login(QtWidgets.QWidget): #login checks for username first, then goes to face compare 
     def __init__(self):
         super().__init__()
 
@@ -135,9 +130,47 @@ class Login(QtWidgets.QWidget): #Generic account login
 
         if founduser==True:
             self.hide()
-            self.Login.show()
+            if self.w is None:
+                self.w = FaceComaparison()
+                self.w.show()
+            else:
+                self.w.close()  # Close window.
+                self.w = None  # Discard reference.
 
 ######################################################################
+
+class FaceComaparison(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setMinimumSize(QSize(400, 200)) #lol
+        self.setWindowTitle("face_recog")
+        self.display_width=640
+        self.display_height=480
+
+        self.image_label=QLabel(self)
+        self.image_label.resize(self.display_width, self.display_height)
+
+        self.thread = face_recog(calledfrom='compare')
+        self.thread.change_pixmap_signal.connect(self.update_image)
+        self.thread.start()
+        
+    def closeEvent(self, event): #so face recog actually closes on program end 
+        self.thread.stop()
+        event.accept()
+
+    @pyqtSlot(np.ndarray) #references change_pixmap_signal
+    def update_image(self, image):
+        qt_img = self.convert_cv_qt(image)
+        self.image_label.setPixmap(qt_img)
+
+    def convert_cv_qt(self, image): #all of the processing happens here
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape #all of this is to convert for pyqt6 usage
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format.Format_RGB888)
+        p = convert_to_Qt_format.scaled(self.display_width, self.display_height, Qt.AspectRatioMode.KeepAspectRatio)
+        return QPixmap.fromImage(p)
+
         
 ###################################################################### New window to create an account
 class accountCreation(QWidget): #to create account, probably going to use a lot of cv2
@@ -206,10 +239,9 @@ class face_recog_holder(QWidget):
         vbox.addWidget(Exit)
         self.setLayout(vbox)
 
-        self.thread = face_recog()
+        self.thread = face_recog(calledfrom='accountcreate')
         self.thread.change_pixmap_signal.connect(self.update_image)
         self.thread.start()
-        
 
     def show_accountCreation(self):
         new_username = self.UserEntry.text()
@@ -234,7 +266,7 @@ class face_recog_holder(QWidget):
             else:
                 new_id = max_id + 1
             
-            new_face = open(r'C:\Users\sahil\Documents\repos\facerecoglogin\Face-Recognition-GUI-Login\face\0.jpg', 'rb').read() #rb is read binary
+            new_face = open(str(filepath)+r'\face\0.jpg', 'rb').read() #rb is read binary
             cursor.execute(add_row, (new_id, new_username, new_face))
             conn.commit()
             if self.w is None:
