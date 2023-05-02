@@ -1,10 +1,11 @@
 from mysql.connector import connect, Error
-
 from PyQt6 import QtWidgets, QtGui
 from PyQt6.QtWidgets import  QWidget, QLabel, QVBoxLayout
 from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QPixmap
+from PIL import Image
+from io import BytesIO
 import yaml, sys, cv2, numpy as np, pathlib, os
 
 filepath=pathlib.Path(__file__).parent.resolve() #path of file accesed
@@ -35,10 +36,11 @@ except Error as e:
 class face_recog(QThread):
     
     change_pixmap_signal = pyqtSignal(np.ndarray)
-    def __init__(self, calledfrom):
+    def __init__(self, calledfrom, user):
         super().__init__()
         self._run_flag = True
         self.calledfrom = calledfrom
+        self.user = user
     
     def run(self): 
 
@@ -68,8 +70,12 @@ class face_recog(QThread):
                         if (self.calledfrom=='accountcreate'): #functionality changes based on which method facerecog is called from
                             cv2.imwrite(os.path.join(path, str(count)+'.jpg'), face)
                         if (self.calledfrom=='compare'):
-                            print(filepath)
-
+                            '''
+                            cursor.execute("SELECT face FROM images WHERE id=?", (self.user,))
+                            imagerow=cursor.fetchone
+                            blob=imagerow[0]
+                            accountface=Image.open(BytesIO(blob))
+                            '''
                 self.change_pixmap_signal.emit(image)
         
 
@@ -131,7 +137,7 @@ class Login(QtWidgets.QWidget): #login checks for username first, then goes to f
         if founduser==True:
             self.hide()
             if self.w is None:
-                self.w = FaceComaparison()
+                self.w = FaceComaparison(username=Username)
                 self.w.show()
             else:
                 self.w.close()  # Close window.
@@ -140,19 +146,41 @@ class Login(QtWidgets.QWidget): #login checks for username first, then goes to f
 ######################################################################
 
 class FaceComaparison(QWidget):
-    def __init__(self):
+    def __init__(self, username):
         super().__init__()
         self.setMinimumSize(QSize(400, 200)) #lol
         self.setWindowTitle("face_recog")
         self.display_width=640
         self.display_height=480
+        self.username = username
 
         self.image_label=QLabel(self)
         self.image_label.resize(self.display_width, self.display_height)
 
-        self.thread = face_recog(calledfrom='compare')
+        Exit = QPushButton("Exit", self)
+        self.w = None
+        Exit.clicked.connect(self.showLogin)
+        Exit.resize(210,70)
+        Exit.move(75, 0)
+
+        Compare = QPushButton("Compare Face", self)
+        Compare.clicked.connect(self.compareFace)
+        Exit.resize(210,70)
+        Exit.move(75, 0)
+
+
+        self.thread = face_recog(calledfrom='compare', user=username)
         self.thread.change_pixmap_signal.connect(self.update_image)
         self.thread.start()
+
+    def showLogin(self):
+        self.hide()
+        if self.w is None:
+            self.w = Login()
+            self.w.show()
+        else:
+            self.w.close()  # Close window.
+            self.w = None  # Discard reference.
         
     def closeEvent(self, event): #so face recog actually closes on program end 
         self.thread.stop()
@@ -239,7 +267,7 @@ class face_recog_holder(QWidget):
         vbox.addWidget(Exit)
         self.setLayout(vbox)
 
-        self.thread = face_recog(calledfrom='accountcreate')
+        self.thread = face_recog(calledfrom='accountcreate', user='')
         self.thread.change_pixmap_signal.connect(self.update_image)
         self.thread.start()
 
