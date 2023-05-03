@@ -69,12 +69,9 @@ class face_recog(QThread):
                         if (self.calledfrom=='accountcreate'): #functionality changes based on which method facerecog is called from
                             cv2.imwrite(os.path.join(path, str(count)+'.jpg'), face)
                         if (self.calledfrom=='compare'):
-                            '''
-                            cursor.execute("SELECT face FROM images WHERE id=?", (self.user,))
-                            imagerow=cursor.fetchone
-                            blob=imagerow[0]
-                            accountface=Image.open(BytesIO(blob))
-                            '''
+                            if not (os.path.isfile(os.path.join(path, 'tempcompare.jpg'))):
+                                cv2.imwrite(os.path.join(path, 'tempcompare.jpg'), face)
+                            
                 self.change_pixmap_signal.emit(image)
         
 
@@ -168,16 +165,23 @@ class FaceComaparison(QWidget):
         Exit.resize(210,70)
         Exit.move(75, 0)
 
-
         self.thread = face_recog(calledfrom='compare', user=username)
         self.thread.change_pixmap_signal.connect(self.update_image)
         self.thread.start()
+
+    def compareFace(self): #work on this stuff
+        cursor.execute("SELECT face FROM images WHERE id=?", (self.user,))
+        imagerow=cursor.fetchone()
+        blob=imagerow[0]
+        decrFace=win32crypt.CryptUnprotectData(blob, None)[1]
+        accountFace=Image.open(BytesIO(decrFace))
 
     def showLogin(self):
         self.hide()
         if self.w is None:
             self.w = Login()
             self.w.show()
+            self.thread.stop()
         else:
             self.w.close()  # Close window.
             self.w = None  # Discard reference.
@@ -255,7 +259,6 @@ class face_recog_holder(QWidget):
         self.allGood.setText("Face found, you can exit")
         self.allGood.move(70, 0)
 
-
         Exit = QPushButton("Exit", self)
         self.w = None
         Exit.clicked.connect(self.show_accountCreation)
@@ -298,7 +301,7 @@ class face_recog_holder(QWidget):
             new_face = open(str(filepath)+r'\face\0.jpg', 'rb').read() #rb is read binary
 
             #encrypt credentials, note this locks users to only login on own machine
-            encuser = win32crypt.CryptProtectData(new_username, None, None, None, None, 0)
+            encuser = win32crypt.CryptProtectData((new_username.encode('utf-8')), None, None, None, None, 0)
             encface = win32crypt.CryptProtectData(new_face, None, None, None, None, 0)
 
             cursor.execute(add_row, (new_id, encuser, encface))

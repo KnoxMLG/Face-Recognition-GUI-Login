@@ -153,3 +153,4 @@ cython_debug/
 #.idea/
 face/0.jpg
 config.yml
+face/tempcompare.jpg
