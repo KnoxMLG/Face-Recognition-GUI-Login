@@ -6,7 +6,7 @@ from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QPixmap
 from PIL import Image
 from io import BytesIO
-import yaml, sys, cv2, numpy as np, pathlib, os
+import yaml, sys, cv2, numpy as np, pathlib, os, win32crypt
 
 filepath=pathlib.Path(__file__).parent.resolve() #path of file accesed
 ####################################################################### MYSQL login
@@ -34,7 +34,6 @@ except Error as e:
 #REAL SHIT lol
 ###################################################################### Face recognition
 class face_recog(QThread):
-    
     change_pixmap_signal = pyqtSignal(np.ndarray)
     def __init__(self, calledfrom, user):
         super().__init__()
@@ -130,7 +129,8 @@ class Login(QtWidgets.QWidget): #login checks for username first, then goes to f
         # Compare the string to each username in the list
         founduser=False
         for username in usernames:
-            if Username == username:
+            decryptedusername = (win32crypt.CryptUnprotectData(username, None)[1]).decode("utf-8")
+            if Username == decryptedusername:
                 founduser=True
                 break
 
@@ -278,7 +278,8 @@ class face_recog_holder(QWidget):
         # Compare the string to each username in the list
         useralrexists=False
         for username in usernames:
-            if new_username == username:
+            decryptedusername = (win32crypt.CryptUnprotectData(username, None)[1]).decode("utf-8")
+            if new_username == decryptedusername:
                 self.allGood.setText("Username Already Exists")
                 useralrexists=True
                 break
@@ -295,7 +296,12 @@ class face_recog_holder(QWidget):
                 new_id = max_id + 1
             
             new_face = open(str(filepath)+r'\face\0.jpg', 'rb').read() #rb is read binary
-            cursor.execute(add_row, (new_id, new_username, new_face))
+
+            #encrypt credentials, note this locks users to only login on own machine
+            encuser = win32crypt.CryptProtectData(new_username, None, None, None, None, 0)
+            encface = win32crypt.CryptProtectData(new_face, None, None, None, None, 0)
+
+            cursor.execute(add_row, (new_id, encuser, encface))
             conn.commit()
             if self.w is None:
                 self.w = accountCreation()
