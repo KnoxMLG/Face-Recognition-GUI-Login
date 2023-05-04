@@ -7,6 +7,7 @@ from PyQt6.QtGui import QPixmap
 from PIL import Image
 from io import BytesIO
 import yaml, sys, cv2, numpy as np, pathlib, os, win32crypt
+from deepface import DeepFace
 
 filepath=pathlib.Path(__file__).parent.resolve() #path of file accesed
 ####################################################################### MYSQL login
@@ -174,15 +175,11 @@ class FaceComparison(QWidget):
 
     def compareFace(self, loginid): #work on this stuff
         cursor.execute('SELECT face FROM images WHERE id =%s', (loginid,))
-        for row in cursor.fetchall():
-            print(row[0])
-        #usernames = [row[0] for row in cursor.fetchall()]
-        # Compare the string to each username in the list
-        #cursor.execute("SELECT face FROM images WHERE username = %s", (loginuser,))
-        #imagerow=cursor.fetchone()
-        #print(imagerow)
-        #decrFace=win32crypt.CryptUnprotectData(blob, None)[1]
-        #accountFace=Image.open(BytesIO(decrFace))
+        face=cursor.fetchone()[0]
+        
+        decrFace=win32crypt.CryptUnprotectData(face, None)[1]
+        dbFace=Image.open(BytesIO(decrFace))
+        tempFace=Image.open(filepath+r'\face\tempcompare.jpg')
 
     def showLogin(self):
         self.hide()
@@ -278,7 +275,7 @@ class face_recog_holder(QWidget):
         vbox.addWidget(Exit)
         self.setLayout(vbox)
 
-        self.thread = face_recog(calledfrom='accountcreate', user='')
+        self.thread = face_recog(calledfrom='accountcreate')
         self.thread.change_pixmap_signal.connect(self.update_image)
         self.thread.start()
 
