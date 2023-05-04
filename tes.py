@@ -1,11 +1,8 @@
-import win32crypt
+swa = ['1','2','3']
 
-# Define the encrypted data and entropy
-encrypted_data = b'...encrypted data...'
-encrypted_data2 = b'...encrypted data...'
-# Decrypt the data
-decrypted_data = win32crypt.CryptProtectData(encrypted_data, None, None, None, None, 0)
-decrypted_data2 = win32crypt.CryptProtectData(encrypted_data2, None, None, None, None, 0)
+tes=''
+for s in swa:
+    if s=='3':
+        tes=s
 
-if (decrypted_data2==decrypted_data2):
-    print(True)
+print(tes)

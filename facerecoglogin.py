@@ -35,11 +35,10 @@ except Error as e:
 ###################################################################### Face recognition
 class face_recog(QThread):
     change_pixmap_signal = pyqtSignal(np.ndarray)
-    def __init__(self, calledfrom, user):
+    def __init__(self, calledfrom):
         super().__init__()
         self._run_flag = True
         self.calledfrom = calledfrom
-        self.user = user
     
     def run(self): 
 
@@ -118,23 +117,27 @@ class Login(QtWidgets.QWidget): #login checks for username first, then goes to f
             self.w.close()  # Close window.
             self.w = None  # Discard reference.
   
-    #login function     
+    #login function
     def Login(self):
-        Username= self.UserEntry.text()
-        cursor.execute('SELECT username FROM images')
-        usernames = [row[0] for row in cursor.fetchall()]
+        Username= self.UserEntry.text() #wtv user enters in 
+        cursor.execute('SELECT id, username FROM images') #
+        usernames = [row[1] for row in cursor.fetchall()]
         # Compare the string to each username in the list
         founduser=False
+        tempFoundUser=''
         for username in usernames:
             decryptedusername = (win32crypt.CryptUnprotectData(username, None)[1]).decode("utf-8")
             if Username == decryptedusername:
                 founduser=True
+                tempFoundUser=username
                 break
-
+        
         if founduser==True:
+            cursor.execute('SELECT id from images WHERE username=%s', (tempFoundUser,))
+            id = cursor.fetchone()[0]
             self.hide()
             if self.w is None:
-                self.w = FaceComaparison(username=Username)
+                self.w = FaceComparison(userid=id)
                 self.w.show()
             else:
                 self.w.close()  # Close window.
@@ -142,14 +145,14 @@ class Login(QtWidgets.QWidget): #login checks for username first, then goes to f
 
 ######################################################################
 
-class FaceComaparison(QWidget):
-    def __init__(self, username):
+class FaceComparison(QWidget):
+    def __init__(self, userid):
         super().__init__()
         self.setMinimumSize(QSize(400, 200)) #lol
         self.setWindowTitle("face_recog")
         self.display_width=640
         self.display_height=480
-        self.username = username
+        self.userid=userid
 
         self.image_label=QLabel(self)
         self.image_label.resize(self.display_width, self.display_height)
@@ -161,19 +164,23 @@ class FaceComaparison(QWidget):
         Exit.move(75, 0)
 
         Compare = QPushButton("Compare Face", self)
-        Compare.clicked.connect(lambda: self.compareFace(self.username))
+        Compare.clicked.connect(lambda: self.compareFace(self.userid))
         Exit.resize(210,70)
         Exit.move(75, 0)
 
-        self.thread = face_recog(calledfrom='compare', user=username)
+        self.thread = face_recog(calledfrom='compare')
         self.thread.change_pixmap_signal.connect(self.update_image)
         self.thread.start()
 
-    def compareFace(self, loginname): #work on this stuff
-        loginuser = win32crypt.CryptProtectData((loginname.encode('utf-8')), None, None, None, None, 0)
-        cursor.execute("SELECT face FROM images WHERE id=?", (loginuser,))
-        imagerow=cursor.fetchone()
-        blob=imagerow[0]
+    def compareFace(self, loginid): #work on this stuff
+        cursor.execute('SELECT face FROM images WHERE id =%s', (loginid,))
+        for row in cursor.fetchall():
+            print(row[0])
+        #usernames = [row[0] for row in cursor.fetchall()]
+        # Compare the string to each username in the list
+        #cursor.execute("SELECT face FROM images WHERE username = %s", (loginuser,))
+        #imagerow=cursor.fetchone()
+        #print(imagerow)
         #decrFace=win32crypt.CryptUnprotectData(blob, None)[1]
         #accountFace=Image.open(BytesIO(decrFace))
 
