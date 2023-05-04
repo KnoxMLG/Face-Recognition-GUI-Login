@@ -161,7 +161,7 @@ class FaceComaparison(QWidget):
         Exit.move(75, 0)
 
         Compare = QPushButton("Compare Face", self)
-        Compare.clicked.connect(self.compareFace)
+        Compare.clicked.connect(lambda: self.compareFace(self.username))
         Exit.resize(210,70)
         Exit.move(75, 0)
 
@@ -169,12 +169,13 @@ class FaceComaparison(QWidget):
         self.thread.change_pixmap_signal.connect(self.update_image)
         self.thread.start()
 
-    def compareFace(self): #work on this stuff
-        cursor.execute("SELECT face FROM images WHERE id=?", (self.user,))
+    def compareFace(self, loginname): #work on this stuff
+        loginuser = win32crypt.CryptProtectData((loginname.encode('utf-8')), None, None, None, None, 0)
+        cursor.execute("SELECT face FROM images WHERE id=?", (loginuser,))
         imagerow=cursor.fetchone()
         blob=imagerow[0]
-        decrFace=win32crypt.CryptUnprotectData(blob, None)[1]
-        accountFace=Image.open(BytesIO(decrFace))
+        #decrFace=win32crypt.CryptUnprotectData(blob, None)[1]
+        #accountFace=Image.open(BytesIO(decrFace))
 
     def showLogin(self):
         self.hide()
