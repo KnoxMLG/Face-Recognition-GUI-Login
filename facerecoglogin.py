@@ -120,11 +120,11 @@ class Login(QtWidgets.QWidget): #login checks for username first, then goes to f
     #login function
     def Login(self):
         Username= self.UserEntry.text() #wtv user enters in 
-        cursor.execute('SELECT id, username FROM images') #
-        usernames = [row[1] for row in cursor.fetchall()]
+        cursor.execute('SELECT id, username FROM images') #finds id, username column from the images table
+        usernames = [row[1] for row in cursor.fetchall()] #we want to go through username column
         # Compare the string to each username in the list
-        founduser=False
-        tempFoundUser=''
+        founduser=False #only T if found user
+        tempFoundUser='' #carry past loop
         for username in usernames:
             decryptedusername = (win32crypt.CryptUnprotectData(username, None)[1]).decode("utf-8")
             if Username == decryptedusername:
@@ -134,10 +134,10 @@ class Login(QtWidgets.QWidget): #login checks for username first, then goes to f
         
         if founduser==True:
             cursor.execute('SELECT id from images WHERE username=%s', (tempFoundUser,))
-            id = cursor.fetchone()[0]
+            id = cursor.fetchone()[0] #get id
             self.hide()
             if self.w is None:
-                self.w = FaceComparison(userid=id)
+                self.w = FaceComparison(userid=id) #give id to the face comp window
                 self.w.show()
             else:
                 self.w.close()  # Close window.
