@@ -188,7 +188,6 @@ class FaceComparison(QWidget):
         # Use DeepFace to compare the two images
         backends = ['opencv', 'ssd', 'dlib', 'mtcnn', 'retinaface', 'mediapipe']
         result = DeepFace.verify(array1, array2, detector_backend=backends[0], enforce_detection=False)
-        print(result)
         if (result['verified']==False):
             self.showLogin()
         else:
