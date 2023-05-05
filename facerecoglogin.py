@@ -179,7 +179,7 @@ class FaceComparison(QWidget):
         
         decrFace=win32crypt.CryptUnprotectData(face, None)[1]
         dbFace=Image.open(BytesIO(decrFace))
-        tempFace=Image.open(filepath+r'\face\tempcompare.jpg')
+        tempFace=Image.open(str(filepath)+r'\face\tempcompare.jpg')
 
         #convert to np arrays so they can be compared with Deepface
         array1 = np.array(dbFace)
@@ -188,10 +188,11 @@ class FaceComparison(QWidget):
         # Use DeepFace to compare the two images
         backends = ['opencv', 'ssd', 'dlib', 'mtcnn', 'retinaface', 'mediapipe']
         result = DeepFace.verify(array1, array2, detector_backend=backends[0], enforce_detection=False)
+        print(result)
         if (result['verified']==False):
-            self.showLogin
+            self.showLogin()
         else:
-            self.loggedIn
+            self.loggedIn()
 
     def loggedIn(self):
         self.hide()
