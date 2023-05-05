@@ -1,5 +1,5 @@
 # Face Recognition GUI Login
-> An application utilizing MySQL to authenticate users using instances of their face.
+> An account creation and login application utilizing MySQL to authenticate users using instances of their face.
 
 #### Table of Contents 
 - [Description](#desc)
