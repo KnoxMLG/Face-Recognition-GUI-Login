@@ -1,2 +1,2 @@
 # Face Recognition GUI Login
-> i am working on it
+> An application utilizing MySQL to authenticate users using instances of their face.
