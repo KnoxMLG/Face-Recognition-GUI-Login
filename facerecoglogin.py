@@ -181,6 +181,28 @@ class FaceComparison(QWidget):
         dbFace=Image.open(BytesIO(decrFace))
         tempFace=Image.open(filepath+r'\face\tempcompare.jpg')
 
+        #convert to np arrays so they can be compared with Deepface
+        array1 = np.array(dbFace)
+        array2 = np.array(tempFace)
+
+        # Use DeepFace to compare the two images
+        backends = ['opencv', 'ssd', 'dlib', 'mtcnn', 'retinaface', 'mediapipe']
+        result = DeepFace.verify(array1, array2, detector_backend=backends[0], enforce_detection=False)
+        if (result['verified']==False):
+            self.showLogin
+        else:
+            self.loggedIn
+
+    def loggedIn(self):
+        self.hide()
+        if self.w is None:
+            self.w = postLogin()
+            self.w.show()
+            self.thread.stop()
+        else:
+            self.w.close()  # Close window.
+            self.w = None  # Discard reference.
+        
     def showLogin(self):
         self.hide()
         if self.w is None:
@@ -208,6 +230,10 @@ class FaceComparison(QWidget):
         p = convert_to_Qt_format.scaled(self.display_width, self.display_height, Qt.AspectRatioMode.KeepAspectRatio)
         return QPixmap.fromImage(p)
 
+class postLogin(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setMinimumSize(QSize(400,200))
         
 ###################################################################### New window to create an account
 class accountCreation(QWidget): #to create account, probably going to use a lot of cv2
