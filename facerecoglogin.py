@@ -23,9 +23,15 @@ try:
         db_Info = conn.get_server_info()
         print("Connected to MySQL Server version ", db_Info)
         cursor = conn.cursor()
+        db_conf=config_data["db"]
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_conf}")
+        conn.database = db_conf
         cursor.execute("select database();")
+        cursor.execute("CREATE TABLE IF NOT EXISTS images (id INT AUTO_INCREMENT PRIMARY KEY, username BLOB, face BLOB)")
+        conn.commit()
         record = cursor.fetchone()
         print("You're connected to database: ", record)
+        
 
 except Error as e:
     print("Error while connecting to MySQL", e)
