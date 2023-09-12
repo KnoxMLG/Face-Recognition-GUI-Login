@@ -4,7 +4,6 @@ import win32crypt
 tes=[]
 string='100'
 i=0
-
 while i<10000:
     tes.append(string+str(i))
     i+=1
